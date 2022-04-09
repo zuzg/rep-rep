@@ -1,0 +1,12 @@
+---
+title: "Reproducible Report"
+author: "Agata Żywot & Zuzanna Gawrysiak"
+date: "9 04 2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+![](resources/PP_logotyp_ANG_RGB.png) 
