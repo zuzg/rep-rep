@@ -53,7 +53,7 @@ gp <- ggplot(BITCOIN, aes(Date, Market_price)) +
 gp <- ggplotly(gp)
 gp
 # gp <- blabla...
-# TODO - Market_price ma byæ "Market price" po najechaniu
+# TODO - Market_price ma bya "Market price" po najechaniu
 
 #2
 gp <- ggplot(BITCOIN, aes(Date, Difficulty)) +
@@ -67,3 +67,14 @@ gp
 
 # TODO - combine several columns, possibly normalize/scale the data, add sliders -> myœlê ¿e wtedy jd albo np jakby jakieœ tickery mo¿na by³o daæ 
 
+# FINDING SOME CORRELATIONS - possible multiline plots...
+cor(select(BITCOIN, Difficulty, Hash_rate, Market_price, Trading_volume_value))
+
+# MULTI LINE PLOT (normalize the data - TODO)
+gp <- ggplot(BITCOIN, aes(Date)) +
+  geom_line(aes(y = Market_price), color = "maroon") +
+  geom_line(aes(y = Difficulty), color = "royalblue") +
+  labs(title = "MULTILINE PLOT BLABLA", 
+       x = "", y = "y label")
+gp <- ggplotly(gp)
+gp
