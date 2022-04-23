@@ -4,6 +4,7 @@ REProducible REPort - main theme: alcohol consumption 🍷
 ## plots
 - [x] Distribution - sina plot
 - [ ] Map with continents
+- [ ] Animated bubble plot
 
 ## ideas
 * use world development indicators and compare few chosen countries
