@@ -16,7 +16,7 @@ wdi <- wdi %>% mutate_all(funs(replace(., .== "..", NA)))
 
 wdi <- filter(wdi, Series.Name == "Total alcohol consumption per capita (liters of pure alcohol, projected estimates, 15+ years of age)" |
                 Series.Name == "Suicide mortality rate (per 100,000 population)" |
-                Series.Name == "Urban population")
+                Series.Name == "Population, total")
 wdi <- subset(wdi, select=c(Country.Name, Series.Name, X2000..YR2000.:X2018..YR2018.))
 
 wdi <- wdi %>% gather(year, val, X2000..YR2000.:X2018..YR2018.)
@@ -25,7 +25,7 @@ wdi <- spread(wdi, Series.Name, val)
 
 wdi <- rename(wdi, alcohol="Total alcohol consumption per capita (liters of pure alcohol, projected estimates, 15+ years of age)", 
               suicide="Suicide mortality rate (per 100,000 population)",
-              population="Urban population")
+              population="Population, total")
 wdi$continent <- countrycode(sourcevar = wdi[, "Country.Name"],
                              origin = "country.name",
                              destination = "continent")
@@ -33,7 +33,7 @@ wdi <- wdi %>% na.omit()
 wdi <- mutate(wdi, year=as.integer(str_sub(year, start = 2, end = 5)),
               alcohol=as.numeric(alcohol),
               suicide=as.numeric(suicide),
-              population=as.numeric(population))
+              population=as.numeric(population)/1000000)
 
 p <- ggplot(wdi, aes(alcohol, suicide, size=population, color=continent)) +
   geom_point() +
@@ -42,10 +42,11 @@ p <- ggplot(wdi, aes(alcohol, suicide, size=population, color=continent)) +
        subtitle = 'Year: {frame_time}',
        x = 'Alcohol consumption',
        y = 'Suicide mortality rate',
-       caption = "in liters of pure alcohol per capita") +
+       caption = "in liters of pure alcohol per capita",
+       size = "population in millions") +
   transition_time(as.integer(year)) +
   ease_aes('linear') +
-  scale_size_continuous(range = c(2, 12)) +
+  scale_size_continuous(range = c(2, 12), breaks = c(100, 200, 500, 1000)) +
   theme_tufte(base_size = 18) +
   theme(panel.grid.major = element_line(colour = "grey", size=0.4))
 
