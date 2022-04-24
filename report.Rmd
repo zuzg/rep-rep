@@ -1,12 +1,129 @@
 ---
-title: "Reproducible Report"
+title: "Alcohol consumption in the world"
 author: "Agata Żywot & Zuzanna Gawrysiak"
-date: "9 04 2022"
+date: "24 04 2022"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(DT)
+library(plotly)
+library(readxl)
+library(reshape2)
+library(dplyr)
+library(readxl)
+library(ggforce)
+library(countrycode)
+library(tidyr)
+library(stringr)
+library(gganimate)
+library(ggthemes)
+library(gifski)
+knitr::opts_chunk$set(echo=F, warning=F)
 ```
 
 ![](resources/PP_logotyp_ANG_RGB.png) 
+
+# Executive summary
+Investigating this very interesting indicator. bla bla <br>
+Data from database: World Development Indicators <br>
+Last Updated: 09/15/2021 <br>
+```{r data, ECHO=FALSE}
+wdi_base <- read_excel("resources/Data pack/World_Development_Indicators.xlsx")
+wdi_base <- data.frame(wdi_base)
+wdi_base <- wdi_base %>% mutate_all(funs(replace(., .== "..", NA)))
+alco = "Total alcohol consumption per capita (liters of pure alcohol, projected estimates, 15+ years of age)"
+```
+
+## Alcohol consumption and suicides
+some bla bla about data
+```{r bubble, fig.show='animate', fig.width=6, fig.height=6, cache=FALSE}
+
+wdi <- filter(wdi_base, Series.Name == alco |
+                Series.Name == "Suicide mortality rate (per 100,000 population)" |
+                Series.Name == "Population, total")
+wdi <- subset(wdi, select=c(Country.Name, Series.Name, X2000..YR2000.:X2018..YR2018.))
+wdi <- wdi %>% gather(year, val, X2000..YR2000.:X2018..YR2018.)
+wdi <- spread(wdi, Series.Name, val)
+
+wdi <- rename(wdi, alcohol="Total alcohol consumption per capita (liters of pure alcohol, projected estimates, 15+ years of age)", 
+              suicide="Suicide mortality rate (per 100,000 population)",
+              population="Population, total")
+wdi$continent <- countrycode(sourcevar = wdi[, "Country.Name"],
+                             origin = "country.name",
+                             destination = "continent")
+wdi <- wdi %>% na.omit()
+wdi <- mutate(wdi, year=as.integer(str_sub(year, start = 2, end = 5)),
+              alcohol=as.numeric(alcohol),
+              suicide=as.numeric(suicide),
+              population=as.numeric(population)/1000000)
+
+p <- ggplot(wdi, aes(alcohol, suicide, size=population, color=continent)) +
+  geom_point() +
+  theme_bw() +
+  labs(title = "Correlation between alcohol consumption and suicides in time",
+       subtitle = 'Year: {frame_time}',
+       x = 'Alcohol consumption',
+       y = 'Suicide mortality rate',
+       caption = "in liters of pure alcohol per capita",
+       size = "population in millions") +
+  transition_time(as.integer(year)) +
+  ease_aes('linear') +
+  scale_size_continuous(range = c(2, 12), breaks = c(100, 200, 500, 1000)) +
+  theme_tufte(base_size = 18) +
+  theme(panel.grid.major = element_line(colour = "grey", size=0.4))
+
+a <- animate(plot=p, height=500, width=700, renderer = gifski_renderer(), end_pause=2)
+anim_save("resources/bubble.gif")
+```
+
+![](resources/bubble.gif)
+<br>Some dynamic changes or sth.
+
+## How it changed through years
+```{r sina}
+wdi <- filter(wdi_base, Series.Name == alco)
+wdi <- filter(wdi, !Country.Code %in% c("HIC", "LIC", "LMC", "LMY", "MIC", "UMC", "WLD"))
+wdi <- wdi[colSums(!is.na(wdi)) > 0]
+wdi <- wdi %>% na.omit()
+wdi <- subset(wdi, select=-c(Country.Code, Series.Name, Series.Code))
+wdi <- melt(wdi, id.vars='Country.Name', variable.name = 'year')
+
+wdi$continent <- countrycode(sourcevar = wdi[, "Country.Name"],
+                             origin = "country.name",
+                             destination = "continent")
+
+wdi <- mutate(wdi, value=as.numeric(value))
+
+p <- ggplot(wdi, aes(x=year, y=value, group=year, label=Country.Name)) +
+  geom_violin() +
+  geom_sina(aes(colour=continent)) +
+  labs(title="Distribution of alcohol consumption across countries", x="year", y="litres of alcohol per capita") +
+  scale_x_discrete(labels=c("2000", "2005", "2010", "2015", "2018")) +
+  theme_tufte(base_size = 16)
+ggplotly(p)
+```
+<br>So much Seychelles wow.
+
+## Alcohol consumption by means of income
+```{r}
+wdi <- filter(wdi_base, Series.Name == alco)
+wdi <- filter(wdi, Country.Code %in% c("HIC", "UMC","LIC", "LMC", "LMY", "MIC",  "WLD"))
+wdi <- wdi[colSums(!is.na(wdi)) > 0]
+wdi <- wdi %>% na.omit()
+wdi <- subset(wdi, select=-c(Country.Code, Series.Name, Series.Code))
+wdi <- melt(wdi, id.vars='Country.Name', variable.name = 'year')
+
+p <- ggplot(wdi, aes(x=year, y=as.numeric(value), color=Country.Name)) +
+  geom_point() +
+  geom_line(aes(group=Country.Name), size=1.5) +
+  labs(title="Alcohol consumption by income", x="year", y="litres of alcohol per capita", color="Income") +
+  scale_x_discrete(labels=c("2000", "2005", "2010", "2015", "2018")) +
+  theme_tufte(16) +
+  scale_color_manual(values=c('#edf8b1','#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','Black'),
+                     breaks = c("High income", "Upper middle income", "Middle income",
+                                "Low & middle income","Lower middle income", "Low income","World"))
+p
+```
+<br>Not a great surprise - the higher the income, the greater the alcohol consumption.
