@@ -8,6 +8,7 @@ library(countrycode)
 library(tidyr)
 library(tidyverse)
 library(gifski)
+library(gganimate)
 
 wdi <- read_excel("resources/Data pack/World_Development_Indicators.xlsx")
 wdi <- data.frame(wdi)
@@ -29,17 +30,24 @@ wdi$continent <- countrycode(sourcevar = wdi[, "Country.Name"],
                              origin = "country.name",
                              destination = "continent")
 wdi <- wdi %>% na.omit()
-wdi <- mutate(wdi, year=as.numeric(str_sub(year, start = 2, end = 5)), alcohol=as.numeric(alcohol), suicide=as.numeric(suicide), population=as.numeric(population))
+wdi <- mutate(wdi, year=as.integer(str_sub(year, start = 2, end = 5)),
+              alcohol=as.numeric(alcohol),
+              suicide=as.numeric(suicide),
+              population=as.numeric(population))
 
-print(as.numeric(year))
-
-p <- ggplot(wdi, aes(alcohol, suicide, size=population, color = continent)) +
+p <- ggplot(wdi, aes(alcohol, suicide, size=population, color=continent)) +
   geom_point() +
   theme_bw() +
-  labs(title = 'Year: {frame_time}', x = 'Alcohol consumption', y = 'Suicide mortality rate') +
-  transition_time(year) +
+  labs(title = "Correlation between alcohol consumption and suicides in time",
+       subtitle = 'Year: {frame_time}',
+       x = 'Alcohol consumption',
+       y = 'Suicide mortality rate',
+       caption = "in liters of pure alcohol per capita") +
+  transition_time(as.integer(year)) +
   ease_aes('linear') +
-  labs(caption = "in liters of pure alcohol per capita")
+  scale_size_continuous(range = c(2, 12)) +
+  theme_tufte(base_size = 18) +
+  theme(panel.grid.major = element_line(colour = "grey", size=0.4))
 
-animate(plot=p, width = 600, height = 400, renderer = gifski_renderer())
-anim_save("output.gif")
+animate(plot=p, height=500, width=700, renderer = gifski_renderer(), end_pause=2)
+anim_save("bubble.gif")
