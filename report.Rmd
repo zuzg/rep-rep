@@ -20,6 +20,9 @@ library(stringr)
 library(gganimate)
 library(ggthemes)
 library(gifski)
+library(highcharter)
+library(scales)
+library(ggradar)
 knitr::opts_chunk$set(echo=F, warning=F)
 ```
 
@@ -36,7 +39,58 @@ wdi_base <- wdi_base %>% mutate_all(funs(replace(., .== "..", NA)))
 alco = "Total alcohol consumption per capita (liters of pure alcohol, projected estimates, 15+ years of age)"
 ```
 
-## Alcohol consumption and suicides
+## AlcoMAP
+TODO
+```{r fig.align="center", fig.width=10, fig.height=6}
+alco_df<-filter(wdi_base, Series.Name == "Total alcohol consumption per capita (liters of pure alcohol, projected estimates, 15+ years of age)")
+alco_df <- alco_df[colSums(!is.na(alco_df)) > 0]
+alco_df <- subset(alco_df, select=-c(Series.Name, Series.Code)) 
+alco_df$continent <- countrycode(sourcevar = alco_df[, "Country.Name"],
+                            origin = "country.name",
+                            destination = "continent")
+
+alco_df <- mutate_at(alco_df, names(select(alco_df, starts_with("X"))), as.numeric)
+alco_df <- mutate(alco_df, MeanAlcoConsumption = rowMeans(select(alco_df, starts_with("X")), na.rm = TRUE))
+
+
+alco_df <- mutate(alco_df, Country.Name = recode(str_trim(Country.Name), 
+                      "United States" = "United States of America",
+                      "Russian Federation" = "Russia", 
+                      "Venezuela, RB" = "Venezuela"))
+
+# 1 MAP CHART
+meandf <- select(alco_df, -c(3:7)) %>%
+  rename(country = Country.Name) %>%
+  rename("iso-a3" = Country.Code) %>%
+  as_tibble()
+
+options(highcharter.theme = hc_theme_google(tooltip = list(valueDecimals = 2)))
+data(worldgeojson, package = "highcharter")
+
+hc <- highchart() %>%
+  hc_add_series_map(
+    worldgeojson, meandf, value = 'MeanAlcoConsumption', joinBy = c('name','country'),
+    name = "Liters of pure alcohol"
+  )  %>% 
+  hc_colorAxis(minColor = "#ffff4d",
+               maxColor = "red") %>% 
+  hc_title(
+    text = "World alcohol consumption",
+    style = list(fontWeight = "bold", fontSize = "25px")
+  ) %>% 
+  hc_subtitle(text = "average annual alcohol consumption per capita") %>%
+  hc_caption(
+    enabled = TRUE, 
+    text = "The results are averaged based on the measurements from the years: 2000, 2005, 2010, 2015, 2018.",
+    style = list(fontSize = "10px")
+  )
+hc
+```
+
+
+
+
+## Alcohol consumption and suicide rate
 The chart shows change of suicide mortality rate and alcohol consumption correlation in time. There is no clear visible pattern, however it can be seen, that in many European countries values of both indicators are high. The changes through years are hard to categorize, for some countries there is steady growth, while some fluctuate greatly. One can notice, that by the 2018 points are grouped tighter together and most of the European countries’ suicide rates dropped below 25 deaths per 100,000 population.
 ```{r bubble, fig.show='animate', fig.width=6, fig.height=6, cache=FALSE}
 
@@ -79,6 +133,78 @@ anim_save("resources/bubble.gif")
 ```
 
 ![](resources/bubble.gif)
+
+## Alcohol consumption and suicide rate variance
+The charts below show the suicide rate variance in the most and least alcoholized countries, respectively. One may immediately notice blabla... [TODO!]
+
+```{r}
+suicide <- wdi_base %>%
+  filter(Series.Name == "Suicide mortality rate (per 100,000 population)") %>%
+  select(-c(Series.Name, Series.Code))
+suicide <- suicide[colSums(!is.na(suicide)) > 0]
+suicide <- na.omit(suicide)
+suicide <- mutate_at(suicide, names(select(suicide, starts_with("X"))), as.numeric)
+suicide <- mutate(suicide, Mean.Suicide.Rate = rowMeans(select(suicide, starts_with("X")), na.rm = TRUE))
+
+suicide <- mutate(suicide, Country.Name = recode(str_trim(Country.Name), 
+                                         "United States" = "United States of America",
+                                         "Russian Federation" = "Russia", 
+                                         "Venezuela, RB" = "Venezuela"))
+
+df <- inner_join(alco_df, suicide, by = "Country.Name") %>%
+  select(c(Country.Name, Mean.Suicide.Rate, MeanAlcoConsumption)) %>%
+  arrange(desc(MeanAlcoConsumption))
+
+df$suicide_rate_z <- round((df$Mean.Suicide.Rate - mean(df$Mean.Suicide.Rate))/sd(df$Mean.Suicide.Rate), 2)
+
+df$suicide_rate_type <- ifelse(df$suicide_rate_z < 0, "below", "above")
+
+alcoholized <- arrange(df, desc(MeanAlcoConsumption)) %>%
+  head(30)
+  #tail(30)
+
+alcoholized <- alcoholized[order(alcoholized$suicide_rate_z), ]
+alcoholized$Country.Name <- factor(alcoholized$Country.Name, levels = alcoholized$Country.Name)
+
+ggplot(alcoholized, aes(x=Country.Name, y=suicide_rate_z, label=suicide_rate_z)) + 
+  geom_bar(stat='identity', aes(fill=suicide_rate_type), width=.5)  +
+  scale_fill_manual(name="Suicide rate:", 
+                    labels = c("Above Average", "Below Average"), 
+                    values = c("above"="#e10404", "below"="#618c23")) + 
+  labs(x = "", y = "Standardised suicide mortality rate", 
+       title= "Suicide rate variance in TOP 30 alcoholized countries",
+       caption="Based on the measurements from the years 2000-2019") + 
+  coord_flip() +
+  theme_tufte() +
+  theme(
+    panel.grid.major = element_line(colour = "grey", size=0.4),
+    plot.caption = element_text(hjust = 0.5))
+
+#----------------------------------------------
+
+nonalcoholized <- arrange(df, desc(MeanAlcoConsumption)) %>%
+  tail(30)
+
+nonalcoholized <- nonalcoholized[order(nonalcoholized$suicide_rate_z), ]
+nonalcoholized$Country.Name <- factor(nonalcoholized$Country.Name, levels = nonalcoholized$Country.Name)
+
+ggplot(nonalcoholized, aes(x=Country.Name, y=suicide_rate_z, label=suicide_rate_z)) + 
+  geom_bar(stat='identity', aes(fill=suicide_rate_type), width=.5)  +
+  scale_fill_manual(name="Suicide rate:", 
+                    labels = c("Above Average", "Below Average"), 
+                    values = c("above"="#e10404", "below"="#618c23")) + 
+  labs(x = "", y = "Standardised suicide mortality rate", 
+       title= "Suicide rate variance in TOP 30 alcoholized countries",
+       caption="Based on the measurements from the years 2000-2019") + 
+  coord_flip() +
+  theme_tufte() +
+  theme(
+    panel.grid.major = element_line(colour = "grey", size=0.4),
+    plot.caption = element_text(hjust = 0.5))
+```
+
+
+
 
 ## How it changed through years
 The distribution of alcohol consumption changed over the years. One can notice, that it became more uniform with some outliers in the highest values. It seems like the consumption dropped in the European countries and increased on other continents, what led to evening the shape of distribution.
@@ -128,3 +254,57 @@ p <- ggplot(wdi, aes(x=year, y=as.numeric(value), color=Country.Name)) +
                                 "Low & middle income","Lower middle income", "Low income","World"))
 p
 ```
+
+
+## Socio-economic factors comparison
+Description: TODO.
+```{r fig.width=6, fig.height=6,}
+radar_df <- filter(wdi_base, Series.Name == "Total alcohol consumption per capita (liters of pure alcohol, projected estimates, 15+ years of age)" | 
+           Series.Name == "GDP per capita (current US$)"|
+           Series.Name == "Unemployment, total (% of total labor force) (national estimate)" |
+           Series.Name == "Life expectancy at birth, total (years)"|
+           Series.Name == "CO2 emissions (kt)")
+radar_df <- radar_df[colSums(!is.na(radar_df)) > 0]
+radar_df <- subset(radar_df, select=-c(Series.Code, Country.Code))
+  
+radar_df$continent <- countrycode(sourcevar = radar_df[, "Country.Name"],
+                               origin = "country.name",
+                               destination = "continent")
+
+radar_df <- mutate_at(radar_df, names(select(radar_df, starts_with("X"))), as.numeric)
+radar_df <- mutate(radar_df, Mean.Val = rowMeans(select(radar_df, starts_with("X")), na.rm = TRUE)) %>%   subset(select=c(continent, Country.Name, Series.Name, Mean.Val)) %>%
+  spread(key=Series.Name, value=Mean.Val) %>%
+  subset(select=-Country.Name)
+
+radar_df <- rename(radar_df, c(
+                  Alcohol = "Total alcohol consumption per capita (liters of pure alcohol, projected estimates, 15+ years of age)",
+                  GDP ="GDP per capita (current US$)", 
+                  Unemployment = "Unemployment, total (% of total labor force) (national estimate)",
+                  Life.Exp = "Life expectancy at birth, total (years)",
+                  CO2 = "CO2 emissions (kt)"
+                  ))
+
+wdi_grouped <- radar_df %>%
+  drop_na() %>%
+  group_by(continent) %>%
+  summarise(
+    GDP = mean(GDP, na.rm=TRUE),
+    'Life expectancy' = mean(Life.Exp, na.rm=TRUE),
+    'Unemployment rate' = mean(Unemployment, na.rm=TRUE),
+    'Alcohol consumption' = mean(Alcohol, na.rm=TRUE),
+    'CO2\nconsumption' = mean(CO2, na.rm=TRUE)
+  ) %>%
+  ungroup() %>%
+  mutate_at(vars(-continent), rescale)
+
+wdi_grouped %>%
+  ggradar(
+    plot.title = "Comparison of the socio-economic factors of continents",
+    legend.title = "Continents:",
+    grid.label.size = 5,  # Affects the grid annotations (0%, 50%, etc.)
+    axis.label.size = 5, # Afftects the names of the variables
+    group.point.size = 3,
+    background.circle.transparency = 0
+  )
+```
+

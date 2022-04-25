@@ -1,5 +1,4 @@
 library(ggradar)
-library(palmerpenguins)
 library(tidyverse)
 library(scales)
 library(showtext)
@@ -43,7 +42,7 @@ wdi_grouped <- wdi %>%
     'Life expectancy' = mean(Life.Exp, na.rm=TRUE),
     'Unemployment rate' = mean(Unemployment, na.rm=TRUE),
     'Alcohol consumption' = mean(Alcohol, na.rm=TRUE),
-    CO2 = mean(CO2, na.rm=TRUE)
+    'CO2\nconsumption' = mean(CO2, na.rm=TRUE)
   ) %>%
   ungroup() %>%
   mutate_at(vars(-continent), rescale)
@@ -60,5 +59,3 @@ plt <- wdi_grouped %>%
     background.circle.transparency = 0
   )
 plt
-
-?ggradar
