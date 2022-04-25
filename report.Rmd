@@ -37,7 +37,7 @@ alco = "Total alcohol consumption per capita (liters of pure alcohol, projected 
 ```
 
 ## Alcohol consumption and suicides
-some bla bla about data
+The chart shows change of suicide mortality rate and alcohol consumption correlation in time. There is no clear visible pattern, however it can be seen, that in many European countries values of both indicators are high. The changes through years are hard to categorize, for some countries there is steady growth, while some fluctuate greatly. One can notice, that by the 2018 points are grouped tighter together and most of the European countries’ suicide rates dropped below 25 deaths per 100,000 population.
 ```{r bubble, fig.show='animate', fig.width=6, fig.height=6, cache=FALSE}
 
 wdi <- filter(wdi_base, Series.Name == alco |
@@ -79,9 +79,10 @@ anim_save("resources/bubble.gif")
 ```
 
 ![](resources/bubble.gif)
-<br>Some dynamic changes or sth.
 
 ## How it changed through years
+The distribution of alcohol consumption changed over the years. One can notice, that it became more uniform with some outliers in the highest values. It seems like the consumption dropped in the European countries and increased on other continents, what led to evening the shape of distribution.
+It is interesting to observe Seychelles indicator: since 2015 it exceeded other values, reaching over 20 litres of pure alcohol per capita per year (which is approximately one big shot of pure alcohol every day). The value in 2015 is almost double the value in 2010.
 ```{r sina}
 wdi <- filter(wdi_base, Series.Name == alco)
 wdi <- filter(wdi, !Country.Code %in% c("HIC", "LIC", "LMC", "LMY", "MIC", "UMC", "WLD"))
@@ -107,6 +108,7 @@ ggplotly(p)
 <br>So much Seychelles wow.
 
 ## Alcohol consumption by means of income
+Considering countries grouped by income levels, yearly consumption of alcohol is investigated. What is interesting, up to 2010 Low income countries had higher consumption than Lower middle income countries, what seems counterintuitive. After that time the hierarchy stabilizes in an expected order: the higher the income, the more litres of consumed alcohol.
 ```{r}
 wdi <- filter(wdi_base, Series.Name == alco)
 wdi <- filter(wdi, Country.Code %in% c("HIC", "UMC","LIC", "LMC", "LMY", "MIC",  "WLD"))
@@ -126,4 +128,3 @@ p <- ggplot(wdi, aes(x=year, y=as.numeric(value), color=Country.Name)) +
                                 "Low & middle income","Lower middle income", "Low income","World"))
 p
 ```
-<br>Not a great surprise - the higher the income, the greater the alcohol consumption.
