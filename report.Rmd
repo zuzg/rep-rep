@@ -1,8 +1,15 @@
 ---
 title: "Alcohol consumption in the world"
-author: "Agata Żywot & Zuzanna Gawrysiak"
-date: "24 04 2022"
-output: html_document
+author: |
+  ![](resources/PP_logotyp_ANG_RGB.png){width=50% align=right} 
+  Agata Żywot & Zuzanna Gawrysiak
+date: "24IV2022"
+output:
+  tufte::tufte_html:
+    tufte_features: ["fonts", "background"]
+    toc: true
+  html_document: 
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -22,11 +29,12 @@ library(ggthemes)
 library(gifski)
 library(highcharter)
 library(scales)
+library(tufte)
 library(ggradar)
 knitr::opts_chunk$set(echo=F, warning=F)
 ```
 
-![](resources/PP_logotyp_ANG_RGB.png) 
+
 
 # Executive summary
 Investigating this very interesting indicator. bla bla <br>
@@ -39,6 +47,8 @@ wdi_base <- wdi_base %>% mutate_all(funs(replace(., .== "..", NA)))
 alco = "Total alcohol consumption per capita (liters of pure alcohol, projected estimates, 15+ years of age)"
 ```
 
+# Alcohol consumption analysis
+
 ## AlcoMAP
 TODO
 ```{r fig.align="center", fig.width=10, fig.height=6}
@@ -48,25 +58,19 @@ alco_df <- subset(alco_df, select=-c(Series.Name, Series.Code))
 alco_df$continent <- countrycode(sourcevar = alco_df[, "Country.Name"],
                             origin = "country.name",
                             destination = "continent")
-
 alco_df <- mutate_at(alco_df, names(select(alco_df, starts_with("X"))), as.numeric)
 alco_df <- mutate(alco_df, MeanAlcoConsumption = rowMeans(select(alco_df, starts_with("X")), na.rm = TRUE))
-
-
 alco_df <- mutate(alco_df, Country.Name = recode(str_trim(Country.Name), 
                       "United States" = "United States of America",
                       "Russian Federation" = "Russia", 
                       "Venezuela, RB" = "Venezuela"))
-
 # 1 MAP CHART
 meandf <- select(alco_df, -c(3:7)) %>%
   rename(country = Country.Name) %>%
   rename("iso-a3" = Country.Code) %>%
   as_tibble()
-
 options(highcharter.theme = hc_theme_google(tooltip = list(valueDecimals = 2)))
 data(worldgeojson, package = "highcharter")
-
 hc <- highchart() %>%
   hc_add_series_map(
     worldgeojson, meandf, value = 'MeanAlcoConsumption', joinBy = c('name','country'),
@@ -93,14 +97,12 @@ hc
 ## Alcohol consumption and suicide rate
 The chart shows change of suicide mortality rate and alcohol consumption correlation in time. There is no clear visible pattern, however it can be seen, that in many European countries values of both indicators are high. The changes through years are hard to categorize, for some countries there is steady growth, while some fluctuate greatly. One can notice, that by the 2018 points are grouped tighter together and most of the European countries’ suicide rates dropped below 25 deaths per 100,000 population.
 ```{r bubble, fig.show='animate', fig.width=6, fig.height=6, cache=FALSE}
-
 wdi <- filter(wdi_base, Series.Name == alco |
                 Series.Name == "Suicide mortality rate (per 100,000 population)" |
                 Series.Name == "Population, total")
 wdi <- subset(wdi, select=c(Country.Name, Series.Name, X2000..YR2000.:X2018..YR2018.))
 wdi <- wdi %>% gather(year, val, X2000..YR2000.:X2018..YR2018.)
 wdi <- spread(wdi, Series.Name, val)
-
 wdi <- rename(wdi, alcohol="Total alcohol consumption per capita (liters of pure alcohol, projected estimates, 15+ years of age)", 
               suicide="Suicide mortality rate (per 100,000 population)",
               population="Population, total")
@@ -112,7 +114,6 @@ wdi <- mutate(wdi, year=as.integer(str_sub(year, start = 2, end = 5)),
               alcohol=as.numeric(alcohol),
               suicide=as.numeric(suicide),
               population=as.numeric(population)/1000000)
-
 p <- ggplot(wdi, aes(alcohol, suicide, size=population, color=continent)) +
   geom_point() +
   theme_bw() +
@@ -127,7 +128,6 @@ p <- ggplot(wdi, aes(alcohol, suicide, size=population, color=continent)) +
   scale_size_continuous(range = c(2, 12), breaks = c(100, 200, 500, 1000)) +
   theme_tufte(base_size = 18) +
   theme(panel.grid.major = element_line(colour = "grey", size=0.4))
-
 a <- animate(plot=p, height=500, width=700, renderer = gifski_renderer(), end_pause=2)
 anim_save("resources/bubble.gif")
 ```
@@ -135,9 +135,10 @@ anim_save("resources/bubble.gif")
 ![](resources/bubble.gif)
 
 ## Alcohol consumption and suicide rate variance
+::: {.fullwidth}
 The charts below show the suicide rate variance in the most and least alcoholized countries, respectively. One may immediately notice blabla... [TODO!]
 
-```{r}
+```{r figures-side, fig.show="hold", out.width="50%"}
 suicide <- wdi_base %>%
   filter(Series.Name == "Suicide mortality rate (per 100,000 population)") %>%
   select(-c(Series.Name, Series.Code))
@@ -145,27 +146,20 @@ suicide <- suicide[colSums(!is.na(suicide)) > 0]
 suicide <- na.omit(suicide)
 suicide <- mutate_at(suicide, names(select(suicide, starts_with("X"))), as.numeric)
 suicide <- mutate(suicide, Mean.Suicide.Rate = rowMeans(select(suicide, starts_with("X")), na.rm = TRUE))
-
 suicide <- mutate(suicide, Country.Name = recode(str_trim(Country.Name), 
                                          "United States" = "United States of America",
                                          "Russian Federation" = "Russia", 
                                          "Venezuela, RB" = "Venezuela"))
-
 df <- inner_join(alco_df, suicide, by = "Country.Name") %>%
   select(c(Country.Name, Mean.Suicide.Rate, MeanAlcoConsumption)) %>%
   arrange(desc(MeanAlcoConsumption))
-
 df$suicide_rate_z <- round((df$Mean.Suicide.Rate - mean(df$Mean.Suicide.Rate))/sd(df$Mean.Suicide.Rate), 2)
-
 df$suicide_rate_type <- ifelse(df$suicide_rate_z < 0, "below", "above")
-
 alcoholized <- arrange(df, desc(MeanAlcoConsumption)) %>%
   head(30)
   #tail(30)
-
 alcoholized <- alcoholized[order(alcoholized$suicide_rate_z), ]
 alcoholized$Country.Name <- factor(alcoholized$Country.Name, levels = alcoholized$Country.Name)
-
 ggplot(alcoholized, aes(x=Country.Name, y=suicide_rate_z, label=suicide_rate_z)) + 
   geom_bar(stat='identity', aes(fill=suicide_rate_type), width=.5)  +
   scale_fill_manual(name="Suicide rate:", 
@@ -179,15 +173,11 @@ ggplot(alcoholized, aes(x=Country.Name, y=suicide_rate_z, label=suicide_rate_z))
   theme(
     panel.grid.major = element_line(colour = "grey", size=0.4),
     plot.caption = element_text(hjust = 0.5))
-
 #----------------------------------------------
-
 nonalcoholized <- arrange(df, desc(MeanAlcoConsumption)) %>%
   tail(30)
-
 nonalcoholized <- nonalcoholized[order(nonalcoholized$suicide_rate_z), ]
 nonalcoholized$Country.Name <- factor(nonalcoholized$Country.Name, levels = nonalcoholized$Country.Name)
-
 ggplot(nonalcoholized, aes(x=Country.Name, y=suicide_rate_z, label=suicide_rate_z)) + 
   geom_bar(stat='identity', aes(fill=suicide_rate_type), width=.5)  +
   scale_fill_manual(name="Suicide rate:", 
@@ -203,7 +193,7 @@ ggplot(nonalcoholized, aes(x=Country.Name, y=suicide_rate_z, label=suicide_rate_
     plot.caption = element_text(hjust = 0.5))
 ```
 
-
+:::
 
 
 ## How it changed through years
@@ -216,13 +206,10 @@ wdi <- wdi[colSums(!is.na(wdi)) > 0]
 wdi <- wdi %>% na.omit()
 wdi <- subset(wdi, select=-c(Country.Code, Series.Name, Series.Code))
 wdi <- melt(wdi, id.vars='Country.Name', variable.name = 'year')
-
 wdi$continent <- countrycode(sourcevar = wdi[, "Country.Name"],
                              origin = "country.name",
                              destination = "continent")
-
 wdi <- mutate(wdi, value=as.numeric(value))
-
 p <- ggplot(wdi, aes(x=year, y=value, group=year, label=Country.Name)) +
   geom_violin() +
   geom_sina(aes(colour=continent)) +
@@ -231,7 +218,6 @@ p <- ggplot(wdi, aes(x=year, y=value, group=year, label=Country.Name)) +
   theme_tufte(base_size = 16)
 ggplotly(p)
 ```
-<br>So much Seychelles wow.
 
 ## Alcohol consumption by means of income
 Considering countries grouped by income levels, yearly consumption of alcohol is investigated. What is interesting, up to 2010 Low income countries had higher consumption than Lower middle income countries, what seems counterintuitive. After that time the hierarchy stabilizes in an expected order: the higher the income, the more litres of consumed alcohol.
@@ -242,7 +228,6 @@ wdi <- wdi[colSums(!is.na(wdi)) > 0]
 wdi <- wdi %>% na.omit()
 wdi <- subset(wdi, select=-c(Country.Code, Series.Name, Series.Code))
 wdi <- melt(wdi, id.vars='Country.Name', variable.name = 'year')
-
 p <- ggplot(wdi, aes(x=year, y=as.numeric(value), color=Country.Name)) +
   geom_point() +
   geom_line(aes(group=Country.Name), size=1.5) +
