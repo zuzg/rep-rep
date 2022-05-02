@@ -3,7 +3,7 @@ REProducible REPort - main theme: alcohol consumption 🍷
 
 ## plots
 - [x] Distribution - sina plot
-- [ ] Map with continents
+- [x] Map with continents
 - [x] Animated bubble plot
 - [x] Line plot for income levels
 
