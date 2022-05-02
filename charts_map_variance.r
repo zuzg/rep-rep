@@ -22,24 +22,19 @@ alco_df$continent <- countrycode(sourcevar = alco_df[, "Country.Name"],
 alco_df <- mutate_at(alco_df, names(select(alco_df, starts_with("X"))), as.numeric)
 alco_df <- mutate(alco_df, MeanAlcoConsumption = rowMeans(select(alco_df, starts_with("X")), na.rm = TRUE))
 
-
-alco_df <- mutate(alco_df, Country.Name = recode(str_trim(Country.Name), 
-                      "United States" = "United States of America",
-                      "Russian Federation" = "Russia", 
-                      "Venezuela, RB" = "Venezuela"))
-
 # 1 MAP CHART
-meandf <- select(alco_df, -c(3:7)) %>%
+meandf <- select(alco_df, -c(3:9)) %>%
   rename(country = Country.Name) %>%
-  rename("iso-a3" = Country.Code) %>%
-  as_tibble()
+  rename("iso3" = Country.Code)
 
-options(highcharter.theme = hc_theme_google(tooltip = list(valueDecimals = 2)))
+
+options(highcharter.theme = hc_theme_tufte(tooltip = list(valueDecimals = 2)))
 data(worldgeojson, package = "highcharter")
 
 hc <- highchart() %>%
   hc_add_series_map(
-    worldgeojson, meandf, value = 'MeanAlcoConsumption', joinBy = c('name','country'),
+    worldgeojson, meandf, value = 'MeanAlcoConsumption', 
+    joinBy = 'iso3',
     name = "Liters of pure alcohol"
   )  %>% 
   hc_colorAxis(minColor = "#ffff4d",
@@ -56,9 +51,6 @@ hc <- highchart() %>%
   )
 hc
 
-# https://code.highcharts.com/mapdata/custom/world.js
-# może da się jakoś po "iso-a3"? ale nie wychodziło mi...
-
 
 # 2 SUICIDE VARIANCE (ALCOHOLIZED)
 suicide <- wdi_base %>%
@@ -69,10 +61,6 @@ suicide <- na.omit(suicide)
 suicide <- mutate_at(suicide, names(select(suicide, starts_with("X"))), as.numeric)
 suicide <- mutate(suicide, Mean.Suicide.Rate = rowMeans(select(suicide, starts_with("X")), na.rm = TRUE))
 
-suicide <- mutate(suicide, Country.Name = recode(str_trim(Country.Name), 
-                                         "United States" = "United States of America",
-                                         "Russian Federation" = "Russia", 
-                                         "Venezuela, RB" = "Venezuela"))
 
 df <- inner_join(alco_df, suicide, by = "Country.Name") %>%
   select(c(Country.Name, Mean.Suicide.Rate, MeanAlcoConsumption)) %>%
