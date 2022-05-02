@@ -1,9 +1,8 @@
 ---
-title: "Alcohol consumption in the world"
-author: |
-  ![](resources/PP_logotyp_ANG_RGB.png){width=50% align=right} 
-  Agata Żywot & Zuzanna Gawrysiak
-date: "24IV2022"
+title: "<br><br><br>Alcohol consumption in the world"
+author:
+  Agata Zywot & Zuzanna Gawrysiak
+# date: "24IV2022"
 output:
   tufte::tufte_html:
     tufte_features: ["fonts", "background"]
@@ -11,6 +10,13 @@ output:
   html_document: 
     toc: yes
 ---
+
+<img src="logo.png" style="width: 650px;
+  height: auto;position:absolute;top:50px;" />
+<style>
+  body {
+  text-align: justify}
+</style>
 
 ```{r setup, include=FALSE}
 library(ggplot2)
@@ -30,57 +36,58 @@ library(gifski)
 library(highcharter)
 library(scales)
 library(tufte)
-library(ggradar)
+library(tidyverse)
+library(scales)
+library(see)
 knitr::opts_chunk$set(echo=F, warning=F)
 ```
-
-
-
 # Executive summary
-Investigating this very interesting indicator. bla bla <br>
-Data from database: World Development Indicators <br>
-Last Updated: 09/15/2021 <br>
+::: {.fullwidth}
+Alcohol consumption might be perceived as a routine part of the social landscape in many of today's societies. However, according to World Health Organization, drinking alcoholic beverages contributes to 3\ million deaths each year globally. Therefore, the following investigation of consumption of this toxic and psychoactive substance concerns its progression over time as well as possible association with other socio-economic indicators. The goal is to determine which region of the world might be particularly prone to alcoholization and what might be the causes and consequences of it.
+:::
+*Data source: World Development Indicators*
+
 ```{r data, ECHO=FALSE}
 wdi_base <- read_excel("resources/Data pack/World_Development_Indicators.xlsx")
 wdi_base <- data.frame(wdi_base)
 wdi_base <- wdi_base %>% mutate_all(funs(replace(., .== "..", NA)))
 alco = "Total alcohol consumption per capita (liters of pure alcohol, projected estimates, 15+ years of age)"
+continent_colors <- c('#e10404', '#fe5000', '#ffbf00', '#028900', '#0392cf')
 ```
 
-# Alcohol consumption analysis
-
-## AlcoMAP
-TODO
-```{r fig.align="center", fig.width=10, fig.height=6}
+# Global alcohol consumption
+::: {.fullwidth}
+The first chart examines countries by alcohol consumption. As it can be immediately seen, the usage is not equal. Taking a closer look at the relationship between a particular country's specific alcohol consumption or its lack, one may start thinking of possible factors involved. For example, some countries are known to produce specific types of alcohol or some cultures see alcohol consumption as a pleasurable experience. The following map helps to come up with possible associations.
+```{r alcomap, fig.width=10, fig.height=7}
 alco_df<-filter(wdi_base, Series.Name == "Total alcohol consumption per capita (liters of pure alcohol, projected estimates, 15+ years of age)")
 alco_df <- alco_df[colSums(!is.na(alco_df)) > 0]
-alco_df <- subset(alco_df, select=-c(Series.Name, Series.Code)) 
+alco_df <- subset(alco_df, select=-c(Series.Name, Series.Code))
+
 alco_df$continent <- countrycode(sourcevar = alco_df[, "Country.Name"],
                             origin = "country.name",
                             destination = "continent")
+
 alco_df <- mutate_at(alco_df, names(select(alco_df, starts_with("X"))), as.numeric)
 alco_df <- mutate(alco_df, MeanAlcoConsumption = rowMeans(select(alco_df, starts_with("X")), na.rm = TRUE))
-alco_df <- mutate(alco_df, Country.Name = recode(str_trim(Country.Name), 
-                      "United States" = "United States of America",
-                      "Russian Federation" = "Russia", 
-                      "Venezuela, RB" = "Venezuela"))
-# 1 MAP CHART
-meandf <- select(alco_df, -c(3:7)) %>%
+
+meandf <- select(alco_df, -c(3:8)) %>%
   rename(country = Country.Name) %>%
-  rename("iso-a3" = Country.Code) %>%
-  as_tibble()
-options(highcharter.theme = hc_theme_google(tooltip = list(valueDecimals = 2)))
+  rename("iso3" = Country.Code) %>% as_tibble()
+
+options(highcharter.theme = hc_theme_tufte(tooltip = list(valueDecimals = 2)))
 data(worldgeojson, package = "highcharter")
+
 hc <- highchart() %>%
   hc_add_series_map(
-    worldgeojson, meandf, value = 'MeanAlcoConsumption', joinBy = c('name','country'),
+    worldgeojson, meandf, value = 'MeanAlcoConsumption', 
+    joinBy = 'iso3',
     name = "Liters of pure alcohol"
   )  %>% 
   hc_colorAxis(minColor = "#ffff4d",
                maxColor = "red") %>% 
   hc_title(
     text = "World alcohol consumption",
-    style = list(fontWeight = "bold", fontSize = "25px")
+    style = list(fontWeight = "bold", fontSize = "30px")
   ) %>% 
   hc_subtitle(text = "average annual alcohol consumption per capita") %>%
   hc_caption(
@@ -90,13 +97,12 @@ hc <- highchart() %>%
   )
 hc
 ```
+:::
 
-
-
-
-## Alcohol consumption and suicide rate
-The chart shows change of suicide mortality rate and alcohol consumption correlation in time. There is no clear visible pattern, however it can be seen, that in many European countries values of both indicators are high. The changes through years are hard to categorize, for some countries there is steady growth, while some fluctuate greatly. One can notice, that by the 2018 points are grouped tighter together and most of the European countries’ suicide rates dropped below 25 deaths per 100,000 population.
-```{r bubble, fig.show='animate', fig.width=6, fig.height=6, cache=FALSE}
+# Alcohol consumption and suicide rate
+::: {.fullwidth}
+The chart shows change of suicide mortality rate and alcohol consumption correlation in time. There is no clear visible pattern, however it can be seen, that in many European countries values of both indicators are high. The changes through years are hard to categorize, for some countries there is steady growth, while some fluctuate greatly. One can notice, that by the 2018 points are grouped tighter together and most of the European countries' suicide rates dropped below 25 deaths per 100,000 population.
+```{r bubble, fig.align = 'center', fig.show='animate', fig.width=6, fig.height=6, cache=FALSE}
 wdi <- filter(wdi_base, Series.Name == alco |
                 Series.Name == "Suicide mortality rate (per 100,000 population)" |
                 Series.Name == "Population, total")
@@ -119,26 +125,27 @@ p <- ggplot(wdi, aes(alcohol, suicide, size=population, color=continent)) +
   theme_bw() +
   labs(title = "Correlation between alcohol consumption and suicides in time",
        subtitle = 'Year: {frame_time}',
-       x = 'Alcohol consumption',
-       y = 'Suicide mortality rate',
-       caption = "in liters of pure alcohol per capita",
-       size = "population in millions") +
+       x = 'liters of alcohol per capita',
+       y = 'suicide mortality rate',
+       size = "population (M)") +
   transition_time(as.integer(year)) +
   ease_aes('linear') +
   scale_size_continuous(range = c(2, 12), breaks = c(100, 200, 500, 1000)) +
   theme_tufte(base_size = 18) +
-  theme(panel.grid.major = element_line(colour = "grey", size=0.4))
+  theme(panel.grid.major = element_line(colour = "grey", size=0.4)) +
+  scale_color_manual(values=continent_colors)
 a <- animate(plot=p, height=500, width=700, renderer = gifski_renderer(), end_pause=2)
 anim_save("resources/bubble.gif")
 ```
 
 ![](resources/bubble.gif)
+:::
 
-## Alcohol consumption and suicide rate variance
+# Alcohol consumption and suicide rate variance
 ::: {.fullwidth}
-The charts below show the suicide rate variance in the most and least alcoholized countries, respectively. One may immediately notice blabla... [TODO!]
+The charts below show the suicide rate variance in the most and least alcoholized countries, respectively. The suicide index meaning the number of suicides per 100 000 population was standardised and compared among the aforementioned groups of countries. The results strike immediately - the more alcohol consumed on average, the more probable a country is to have above average suicide rate (and it is analogous to the opposite case). What is interesting, according to 3-sigma rule, Russia and Lithuania would be considered as outliers.  
 
-```{r figures-side, fig.show="hold", out.width="50%"}
+```{r variance, figures-side, fig.show="hold", out.width="50%"}
 suicide <- wdi_base %>%
   filter(Series.Name == "Suicide mortality rate (per 100,000 population)") %>%
   select(-c(Series.Name, Series.Code))
@@ -146,10 +153,6 @@ suicide <- suicide[colSums(!is.na(suicide)) > 0]
 suicide <- na.omit(suicide)
 suicide <- mutate_at(suicide, names(select(suicide, starts_with("X"))), as.numeric)
 suicide <- mutate(suicide, Mean.Suicide.Rate = rowMeans(select(suicide, starts_with("X")), na.rm = TRUE))
-suicide <- mutate(suicide, Country.Name = recode(str_trim(Country.Name), 
-                                         "United States" = "United States of America",
-                                         "Russian Federation" = "Russia", 
-                                         "Venezuela, RB" = "Venezuela"))
 df <- inner_join(alco_df, suicide, by = "Country.Name") %>%
   select(c(Country.Name, Mean.Suicide.Rate, MeanAlcoConsumption)) %>%
   arrange(desc(MeanAlcoConsumption))
@@ -162,9 +165,9 @@ alcoholized <- alcoholized[order(alcoholized$suicide_rate_z), ]
 alcoholized$Country.Name <- factor(alcoholized$Country.Name, levels = alcoholized$Country.Name)
 ggplot(alcoholized, aes(x=Country.Name, y=suicide_rate_z, label=suicide_rate_z)) + 
   geom_bar(stat='identity', aes(fill=suicide_rate_type), width=.5)  +
-  scale_fill_manual(name="Suicide rate:", 
+  scale_fill_manual(name="suicide rate", 
                     labels = c("Above Average", "Below Average"), 
-                    values = c("above"="#e10404", "below"="#618c23")) + 
+                    values = c("above"="#e10404", "below"="#028900")) + 
   labs(x = "", y = "Standardised suicide mortality rate", 
        title= "Suicide rate variance in TOP 30 alcoholized countries",
        caption="Based on the measurements from the years 2000-2019") + 
@@ -180,11 +183,11 @@ nonalcoholized <- nonalcoholized[order(nonalcoholized$suicide_rate_z), ]
 nonalcoholized$Country.Name <- factor(nonalcoholized$Country.Name, levels = nonalcoholized$Country.Name)
 ggplot(nonalcoholized, aes(x=Country.Name, y=suicide_rate_z, label=suicide_rate_z)) + 
   geom_bar(stat='identity', aes(fill=suicide_rate_type), width=.5)  +
-  scale_fill_manual(name="Suicide rate:", 
+  scale_fill_manual(name="suicide rate", 
                     labels = c("Above Average", "Below Average"), 
-                    values = c("above"="#e10404", "below"="#618c23")) + 
+                    values = c("above"="#e10404", "below"="#028900")) + 
   labs(x = "", y = "Standardised suicide mortality rate", 
-       title= "Suicide rate variance in TOP 30 alcoholized countries",
+       title= "Suicide rate variance in TOP 30 non-alcoholized countries",
        caption="Based on the measurements from the years 2000-2019") + 
   coord_flip() +
   theme_tufte() +
@@ -192,14 +195,13 @@ ggplot(nonalcoholized, aes(x=Country.Name, y=suicide_rate_z, label=suicide_rate_
     panel.grid.major = element_line(colour = "grey", size=0.4),
     plot.caption = element_text(hjust = 0.5))
 ```
-
 :::
 
-
-## How it changed through years
+# How it changed through years
+::: {.fullwidth}
 The distribution of alcohol consumption changed over the years. One can notice, that it became more uniform with some outliers in the highest values. It seems like the consumption dropped in the European countries and increased on other continents, what led to evening the shape of distribution.
 It is interesting to observe Seychelles indicator: since 2015 it exceeded other values, reaching over 20 litres of pure alcohol per capita per year (which is approximately one big shot of pure alcohol every day). The value in 2015 is almost double the value in 2010.
-```{r sina}
+```{r sina, fig.align = 'center'}
 wdi <- filter(wdi_base, Series.Name == alco)
 wdi <- filter(wdi, !Country.Code %in% c("HIC", "LIC", "LMC", "LMY", "MIC", "UMC", "WLD"))
 wdi <- wdi[colSums(!is.na(wdi)) > 0]
@@ -215,13 +217,16 @@ p <- ggplot(wdi, aes(x=year, y=value, group=year, label=Country.Name)) +
   geom_sina(aes(colour=continent)) +
   labs(title="Distribution of alcohol consumption across countries", x="year", y="litres of alcohol per capita") +
   scale_x_discrete(labels=c("2000", "2005", "2010", "2015", "2018")) +
-  theme_tufte(base_size = 16)
+  theme_tufte(base_size = 16) + scale_color_manual(values=continent_colors)
 ggplotly(p)
 ```
+:::
 
-## Alcohol consumption by means of income
-Considering countries grouped by income levels, yearly consumption of alcohol is investigated. What is interesting, up to 2010 Low income countries had higher consumption than Lower middle income countries, what seems counterintuitive. After that time the hierarchy stabilizes in an expected order: the higher the income, the more litres of consumed alcohol.
-```{r}
+# Alcohol consumption by means of income
+::: {.fullwidth}
+Considering countries grouped by income levels, yearly consumption of alcohol is investigated. What is interesting, up to 2010 Low income countries had higher consumption than Lower middle income countries, what seems counterintuitive. After that time the hierarchy stabilizes in an expected order: the higher the income, the more liters\ of consumed alcohol.  
+
+```{r income, fig.width=8, fig.height=5}
 wdi <- filter(wdi_base, Series.Name == alco)
 wdi <- filter(wdi, Country.Code %in% c("HIC", "UMC","LIC", "LMC", "LMY", "MIC",  "WLD"))
 wdi <- wdi[colSums(!is.na(wdi)) > 0]
@@ -234,16 +239,21 @@ p <- ggplot(wdi, aes(x=year, y=as.numeric(value), color=Country.Name)) +
   labs(title="Alcohol consumption by income", x="year", y="litres of alcohol per capita", color="Income") +
   scale_x_discrete(labels=c("2000", "2005", "2010", "2015", "2018")) +
   theme_tufte(16) +
-  scale_color_manual(values=c('#edf8b1','#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','Black'),
+  scale_color_manual(values=c('#79ff4d',rev(continent_colors)[2:5], '#660000', 'black'),
                      breaks = c("High income", "Upper middle income", "Middle income",
-                                "Low & middle income","Lower middle income", "Low income","World"))
+                                "Low & middle income","Lower middle income", "Low income","World")) +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_line(colour = "grey", size=0.4)) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 12.5))
 p
 ```
+:::
 
+# Socio-economic factors comparison
+::: {.fullwidth}
+Lastly, the analysis of various socio-economic indices averaged over continents was performed. Indeed, the alcohol consumption per capita was included as well as total CO2 emissions, GDP rate, average life expectancy and unemployment rate. What might be cointerintuitive at first is the high value of both average lifespan and alcohol consumption in the case of Europe and Americas. Does it mean that drinking alcoholic beverages extends life? Or\ maybe these values are just associated with the social welfare...<br>All indices were averaged and rescaled making it possible to see a\ continent's 'profile' in the blink of an eye.  
 
-## Socio-economic factors comparison
-Description: TODO.
-```{r fig.width=6, fig.height=6,}
+```{r spiderchart, fig.height=7}
 radar_df <- filter(wdi_base, Series.Name == "Total alcohol consumption per capita (liters of pure alcohol, projected estimates, 15+ years of age)" | 
            Series.Name == "GDP per capita (current US$)"|
            Series.Name == "Unemployment, total (% of total labor force) (national estimate)" |
@@ -257,8 +267,8 @@ radar_df$continent <- countrycode(sourcevar = radar_df[, "Country.Name"],
                                destination = "continent")
 
 radar_df <- mutate_at(radar_df, names(select(radar_df, starts_with("X"))), as.numeric)
-radar_df <- mutate(radar_df, Mean.Val = rowMeans(select(radar_df, starts_with("X")), na.rm = TRUE)) %>%   subset(select=c(continent, Country.Name, Series.Name, Mean.Val)) %>%
-  spread(key=Series.Name, value=Mean.Val) %>%
+radar_df <- mutate(radar_df, Mean.Val = rowMeans(select(radar_df, starts_with("X")), na.rm = TRUE)) %>%   subset(select=c(continent, Country.Name, Series.Name, Mean.Val)) 
+radar_df <- spread(radar_df, key=Series.Name, value=Mean.Val) %>%
   subset(select=-Country.Name)
 
 radar_df <- rename(radar_df, c(
@@ -269,27 +279,38 @@ radar_df <- rename(radar_df, c(
                   CO2 = "CO2 emissions (kt)"
                   ))
 
+rescale100 <- function(x) (x-min(x))/(max(x) - min(x)) * 100
+
 wdi_grouped <- radar_df %>%
   drop_na() %>%
   group_by(continent) %>%
   summarise(
     GDP = mean(GDP, na.rm=TRUE),
-    'Life expectancy' = mean(Life.Exp, na.rm=TRUE),
-    'Unemployment rate' = mean(Unemployment, na.rm=TRUE),
-    'Alcohol consumption' = mean(Alcohol, na.rm=TRUE),
-    'CO2\nconsumption' = mean(CO2, na.rm=TRUE)
+    'Lifespan' = mean(Life.Exp, na.rm=TRUE),
+    'Unemployment' = mean(Unemployment, na.rm=TRUE),
+    'Alcohol' = mean(Alcohol, na.rm=TRUE),
+    'CO2' = mean(CO2, na.rm=TRUE)
   ) %>%
   ungroup() %>%
-  mutate_at(vars(-continent), rescale)
+  mutate_at(vars(-continent), rescale100) %>%
+  gather(key=Factor, value=Value, 2:6)
 
 wdi_grouped %>%
-  ggradar(
-    plot.title = "Comparison of the socio-economic factors of continents",
-    legend.title = "Continents:",
-    grid.label.size = 5,  # Affects the grid annotations (0%, 50%, etc.)
-    axis.label.size = 5, # Afftects the names of the variables
-    group.point.size = 3,
-    background.circle.transparency = 0
-  )
+  ggplot(aes(
+    x = Factor,
+    y = Value,
+    color = continent,
+    group = continent
+  )) +
+  geom_polygon(size = 1.5, alpha = .0) +
+  coord_radar() +
+  scale_color_manual(values=continent_colors) +
+  theme_radar(base_family = "serif",  plot.title.size = 20) +
+  labs(x = "", y="scale [%]", title="Socio-economic factors of continents") +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
-
+:::
+# Conclusions
+::: {.fullwidth}
+Observing the charts provided, it can be stated that Europe and Africa are the most and the least alcoholized continents respectively (however, note Seychelles and Uganda). Also, there is an association between suicide mortality and alcohol consumption (a strong one on the tails of the alcoholization distribution), the level of income has a significant impact on this factor as well. Moreover, one may be tempted to say that the level of social welfare factors (and perhaps alcohol availability connected with them) reflect the change in alcohol consumption over time.
+:::
